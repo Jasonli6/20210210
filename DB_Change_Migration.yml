@@ -1,0 +1,63 @@
+name: 'DB_Change_Migration'
+variables:
+  build_number: '$(Build.BuildNumber)'
+  commit_id: '$(Build.SourceVersion)'
+
+trigger:
+  branches:
+    include:
+      - 'refs/tags/init-load-uas-data-*'
+      - 'refs/tags/init-load-audit-data-*'
+      - 'refs/tags/init-load-mainframe-data-*'
+
+jobs:
+- job: Build
+  timeoutInMinutes: 100
+  
+      
+  steps:
+  - task: Bash@3
+    displayName: 'Verify Tag Structure'
+    inputs:
+      targetType: inline
+      script: |
+          tag=$(build.sourceBranchName)
+          if [[ ! $tag =~ ^(init-load-).* ]]
+          then
+            echo $tag
+            error_message="
+            \n\n\n
+            ############ REQUIRED TAG STRUCTURE  ####\n
+            Please use this structure:\n
+                                      \n
+            init-load-uas-data-<stack name>-data     example
+            init-load-uas-data-0.0.1
+            #########################################\n
+            "
+            echo -e $error_message
+            exit 1
+          fi
+  
+  - task: CopyFiles@1
+    displayName: 'Copy infra Files'
+    inputs:
+      SourceFolder: '$(build.sourcesdirectory)'
+
+      Contents: |
+        infrastructure/**
+      TargetFolder: '$(build.artifactstagingdirectory)'
+  - task: CopyFiles@1
+    displayName: 'Copy build Files'
+    inputs:
+      SourceFolder: '$(build.sourcesdirectory)'
+
+      Contents: |
+        builds/**
+      TargetFolder: '$(build.artifactstagingdirectory)'    
+  
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Artifact: drop'
+    inputs:
+      PathtoPublish: '$(build.artifactstagingdirectory)'
+
+
